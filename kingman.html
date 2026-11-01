@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b1220">
+<title>Почему очередь растёт? — Почему это работает</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1220;--panel:#162235;--border:#304057;--text:#f3f6ff;--muted:#a7b6ca;--blue:#7cb6ff;--orange:#ffbb75}*{box-sizing:border-box}body{margin:0;background:linear-gradient(145deg,#13233a,#0b1220 65%);font:16px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--text)}main{width:min(930px,100%);margin:auto;padding:34px 18px 50px}.brand{font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:750;color:var(--blue)}h1{font-size:clamp(29px,5vw,48px);line-height:1.12;letter-spacing:-.035em;margin:13px 0 10px}header p{margin:0 0 26px;color:var(--muted);font-size:17px}.controls{display:grid;grid-template-columns:1fr 1fr;gap:14px}.card{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:20px}.control-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:14px;color:var(--muted)}.control-head strong{color:var(--text);font-size:25px;font-variant-numeric:tabular-nums}input[type=range]{width:100%;accent-color:var(--blue);cursor:pointer}.ticks{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:4px}.quick{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0 20px}.quick button{border:1px solid var(--border);background:var(--panel);color:var(--text);padding:9px 16px;border-radius:9px;font:inherit;cursor:pointer}.quick button:hover{border-color:var(--blue)}.results{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}.metric{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:16px}.metric span{display:block;color:var(--muted);font-size:13px}.metric strong{display:block;font-size:clamp(24px,3.5vw,35px);margin-top:5px;font-variant-numeric:tabular-nums}.metric.orange strong{color:var(--orange)}.graph{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:16px}.graph-head{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:10px}.graph h2{font-size:18px;margin:0}.legend{color:var(--muted);font-size:12px}.legend i{display:inline-block;width:9px;height:9px;background:var(--orange);border-radius:50%;margin-right:5px}svg{display:block;width:100%;height:auto;overflow:visible}svg text{font:12px system-ui,sans-serif;fill:var(--muted)}.note{font-size:15px;color:var(--muted);margin:17px 2px 0}.note strong{color:var(--text);font-weight:650}footer{color:var(--muted);font-size:12px;margin-top:25px}@media(max-width:610px){main{padding-top:25px}.controls{grid-template-columns:1fr}.results{gap:7px}.metric{padding:11px}.metric span{font-size:11px;min-height:34px}.metric strong{font-size:23px}.card{padding:16px}}
+</style>
+</head>
+<body>
+<main>
+<header><div class="brand">Почему это работает?</div><h1>Почему автомеханик не должен быть занят на 100%?</h1><p>Добавьте всего пару машин в день и посмотрите, как меняется очередь.</p></header>
+<section class="controls" aria-label="Параметры автосервиса">
+<div class="card"><label class="control-head" for="arrivals"><span>Приезжает машин в день</span><strong id="av">8</strong></label><input id="arrivals" type="range" min="1" max="12" step="0.1" value="8"><div class="ticks"><span>1</span><span>12</span></div></div>
+<div class="card"><label class="control-head" for="capacity"><span>Механик обслуживает за день</span><strong id="cv">10</strong></label><input id="capacity" type="range" min="3" max="15" step="0.5" value="10"><div class="ticks"><span>3</span><span>15</span></div></div>
+</section>
+<div class="quick"><button id="b80" type="button">Загрузка 80%</button><button id="b95" type="button">Загрузка 95%</button></div>
+<section class="results" aria-label="Результаты"><div class="metric"><span>Загрузка механика</span><strong id="load">80%</strong></div><div class="metric orange"><span>Время в очереди</span><strong id="wait">3 ч 12 мин</strong></div><div class="metric"><span>Ожидание + ремонт</span><strong id="total">4 ч</strong></div></section>
+<section class="graph"><div class="graph-head"><h2>Время в автосервисе</h2><span class="legend"><i></i> выбранная загрузка</span></div><svg viewBox="0 0 850 315" role="img" aria-label="Зависимость времени ожидания и ремонта от загрузки механика" id="plot"><g id="grid"></g><path id="curve" fill="none" stroke="#7cb6ff" stroke-width="3" stroke-linecap="round"/><line id="cursor" stroke="#ffbb75" stroke-width="1.5" stroke-dasharray="5 5"/><circle id="point" r="6" fill="#ffbb75" stroke="#162235" stroke-width="3"/><g id="labels"></g></svg></section>
+<p class="note" id="explain"><strong>Почему?</strong> Машины приезжают неравномерно. Чем меньше свободного времени у механика, тем дольше новые клиенты стоят в очереди.</p>
+<footer>Один механик · восьмичасовой рабочий день · случайные заявки (M/M/1) · время в рабочих часах</footer>
+</main>
+<script>
+(()=>{'use strict';
+const $=id=>document.getElementById(id),arr=$('arrivals'),cap=$('capacity');
+const fmt=n=>Number(n).toLocaleString('ru-RU',{maximumFractionDigits:1});
+function duration(h){if(!Number.isFinite(h))return '∞';if(h>=1000)return '> 1000 ч';const m=Math.round(h*60);if(m<60)return m+' мин';const hours=Math.floor(m/60),minutes=m%60;return hours+' ч'+(minutes?' '+minutes+' мин':'');}
+function model(r,c){if(r>=c)return {load:r/c,wait:Infinity,total:Infinity};const service=8/c,total=8/(c-r);return {load:r/c,wait:total-service,total};}
+const NS='http://www.w3.org/2000/svg',newSvg=(tag,attrs,parent)=>{const el=document.createElementNS(NS,tag);Object.entries(attrs).forEach(([k,v])=>el.setAttribute(k,v));parent.appendChild(el);return el;};
+const x0=58,y0=15,W=768,H=250,limit=24;
+function x(p){return x0+p*W}function y(v){return y0+H-Math.min(v,limit)/limit*H}
+const grid=$('grid'),labels=$('labels');
+for(const n of [0,4,8,12,16,20,24]){const py=y(n);newSvg('line',{x1:x0,y1:py,x2:x0+W,y2:py,stroke:'#35455c','stroke-width':1},grid);const t=newSvg('text',{x:x0-10,y:py+4,'text-anchor':'end'},labels);t.textContent=n+' ч';}
+for(const p of [.2,.4,.6,.8,1]){const xx=x(p);const t=newSvg('text',{x:xx,y:y0+H+25,'text-anchor':'middle'},labels);t.textContent=Math.round(p*100)+'%';}
+const axis=newSvg('text',{x:x(.5),y:y0+H+43,'text-anchor':'middle'},labels);axis.textContent='Загрузка';
+let path='';for(let i=0;i<=1000;i++){const p=i/1000,wt=p>=1?limit:(8/Number(cap.value))/(1-p);path+=(i===0?'M':'L')+x(p).toFixed(2)+','+y(wt).toFixed(2)+' ';}
+function update(){const r=Number(arr.value),c=Number(cap.value),m=model(r,c),p=m.load;
+$('av').textContent=fmt(r);$('cv').textContent=fmt(c);$('load').textContent=Math.round(p*100)+'%';$('wait').textContent=duration(m.wait);$('total').textContent=duration(m.total);
+let d='';for(let i=0;i<=1000;i++){const q=i/1000,t=q>=1?Infinity:(8/c)/(1-q);d+=(i?'L':'M')+x(q).toFixed(2)+','+y(t).toFixed(2)+' ';}$('curve').setAttribute('d',d);
+const px=x(Math.min(p,1)),py=y(m.total);$('point').setAttribute('cx',px);$('point').setAttribute('cy',py);$('cursor').setAttribute('x1',px);$('cursor').setAttribute('x2',px);$('cursor').setAttribute('y1',py);$('cursor').setAttribute('y2',y0+H);
+$('explain').innerHTML=p>=1?'<strong>Очередь растёт:</strong> машин приезжает не меньше, чем механик успевает обслужить.':'<strong>Почему?</strong> Машины приезжают неравномерно. Чем меньше свободного времени у механика, тем дольше новые клиенты стоят в очереди.';
+}
+arr.addEventListener('input',update);cap.addEventListener('input',update);$('b80').onclick=()=>{cap.value=10;arr.value=8;update()};$('b95').onclick=()=>{cap.value=10;arr.value=9.5;update()};update();
+})();
+</script>
+</body>
+</html>
